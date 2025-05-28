@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/revanite-io/sci/layer4"
 )
 
@@ -14,9 +15,14 @@ type RawEvidence struct {
 	Timestamp time.Time       `json:"timestamp"`
 	Source    string          `json:"source"`
 	PolicyID  string          `json:"policyId"`
-	Resource  string          `json:"resource"`
+	Resource  Resource        `json:"resource"`
 	Decision  string          `json:"decision"`
 	Details   json.RawMessage `json:"details"`
+}
+
+type Resource struct {
+	Name   string               `json:"name"`
+	Digest cryptoutil.DigestSet `json:"digest"`
 }
 
 // ConformanceClaim represents a higher-level, mapped conformance assertion.

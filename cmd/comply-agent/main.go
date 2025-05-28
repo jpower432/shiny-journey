@@ -7,6 +7,9 @@ package main
 
 import (
 	"context"
+	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"flag"
 	"log"
 	"os"
@@ -14,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/goccy/go-yaml"
+	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/oscal-compass/compliance-to-policy-go/v2/framework/actions"
 
 	"github.com/jpower432/shiny-journey/agent"
@@ -32,7 +36,7 @@ func main() {
 
 func run(ctx context.Context) error {
 	var planConfig, archivistaURL string
-	flag.StringVar(&archivistaURL, "archvista-url", "https://localhost:8080", "URL for Archivista")
+	flag.StringVar(&archivistaURL, "archvista-url", "http://localhost:8082", "URL for Archivista")
 	flag.StringVar(&planConfig, "plan", "docs/samples/plan.yaml", "Location for plan config")
 	flag.Parse()
 
@@ -55,8 +59,18 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	agt := agent.New(agent.WithExporterURL(archivistaURL))
+	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()))
 	runner.RunSimulation(ctx, agt)
 
 	return nil
+}
+
+// Create a random key for testing/prototyping to replace with a real signer.
+func createTestRSAKey() cryptoutil.Signer {
+	privKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		panic(err)
+	}
+	signer := cryptoutil.NewRSASigner(privKey, crypto.SHA256)
+	return signer
 }

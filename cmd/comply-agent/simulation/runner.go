@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/oscal-compass/compliance-to-policy-go/v2/framework/actions"
 
 	"github.com/jpower432/shiny-journey/agent"
@@ -84,15 +85,24 @@ func simulateMetrics() {
 }
 
 func simulateEvidence(agent *agent.Agent) {
+	var digestsByName = make(map[string]string)
+	digestsByName["sha256"] = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	digestSet, err := cryptoutil.NewDigestSet(digestsByName)
+	if err != nil {
+		panic(err)
+	}
 	// OPA Deny
 	agent.IngestRawEvidence(claims.RawEvidence{
 		ID:        uuid.New().String(),
 		Timestamp: time.Now(),
 		Source:    "OPA",
 		PolicyID:  "rbac-policy-001",
-		Resource:  "api-request-001",
-		Decision:  "deny",
-		Details:   json.RawMessage(`{"user":"bob", "action":"delete", "resource":"prod-db"}`),
+		Resource: claims.Resource{
+			Name:   "api-request-001",
+			Digest: digestSet,
+		},
+		Decision: "deny",
+		Details:  json.RawMessage(`{"user":"bob", "action":"delete", "resource":"prod-db"}`),
 	})
 	time.Sleep(1 * time.Second)
 
@@ -102,9 +112,12 @@ func simulateEvidence(agent *agent.Agent) {
 		Timestamp: time.Now(),
 		Source:    "Kyverno",
 		PolicyID:  "psp-baseline",
-		Resource:  "pod-frontend-xyz",
-		Decision:  "mutate",
-		Details:   json.RawMessage(`{"field":"securityContext", "change":"runAsNonRoot: true"}`),
+		Resource: claims.Resource{
+			Name:   "pod-frontend-xyz",
+			Digest: digestSet,
+		},
+		Decision: "mutate",
+		Details:  json.RawMessage(`{"field":"securityContext", "change":"runAsNonRoot: true"}`),
 	})
 	time.Sleep(1 * time.Second)
 
@@ -114,9 +127,12 @@ func simulateEvidence(agent *agent.Agent) {
 		Timestamp: time.Now(),
 		Source:    "OpenSCAP",
 		PolicyID:  "cis-ubuntu-20.04-profile",
-		Resource:  "web-server-007",
-		Decision:  "non_compliant",
-		Details:   json.RawMessage(`{"rule_id":"xccdf_org.ssgproject.content_rule_sshd_disable_x11_forwarding", "remediation":"Set X11Forwarding to no in sshd_config"}`),
+		Resource: claims.Resource{
+			Name:   "web-server-007",
+			Digest: digestSet,
+		},
+		Decision: "non_compliant",
+		Details:  json.RawMessage(`{"rule_id":"xccdf_org.ssgproject.content_rule_sshd_disable_x11_forwarding", "remediation":"Set X11Forwarding to no in sshd_config"}`),
 	})
 	time.Sleep(1 * time.Second)
 
@@ -126,9 +142,12 @@ func simulateEvidence(agent *agent.Agent) {
 		Timestamp: time.Now(),
 		Source:    "OPA",
 		PolicyID:  "network-policy-002",
-		Resource:  "network-flow-abc",
-		Decision:  "allow",
-		Details:   json.RawMessage(`{"src_ip":"10.0.0.5", "dst_ip":"192.168.1.10"}`),
+		Resource: claims.Resource{
+			Name:   "network-flow-abc",
+			Digest: digestSet,
+		},
+		Decision: "allow",
+		Details:  json.RawMessage(`{"src_ip":"10.0.0.5", "dst_ip":"192.168.1.10"}`),
 	})
 	time.Sleep(1 * time.Second)
 
@@ -138,9 +157,12 @@ func simulateEvidence(agent *agent.Agent) {
 		Timestamp: time.Now(),
 		Source:    "Kyverno",
 		PolicyID:  "no-privileged-pods",
-		Resource:  "pod-privileged-test",
-		Decision:  "deny",
-		Details:   json.RawMessage(`{"reason":"privileged container detected"}`),
+		Resource: claims.Resource{
+			Name:   "pod-privileged-test",
+			Digest: digestSet,
+		},
+		Decision: "deny",
+		Details:  json.RawMessage(`{"reason":"privileged container detected"}`),
 	})
 	time.Sleep(1 * time.Second)
 
@@ -150,9 +172,12 @@ func simulateEvidence(agent *agent.Agent) {
 		Timestamp: time.Now(),
 		Source:    "OpenSCAP",
 		PolicyID:  "pci-dss-profile",
-		Resource:  "db-server-001",
-		Decision:  "compliant",
-		Details:   json.RawMessage(`{"scan_duration_sec": 300}`),
+		Resource: claims.Resource{
+			Name:   "db-server-001",
+			Digest: digestSet,
+		},
+		Decision: "compliant",
+		Details:  json.RawMessage(`{"scan_duration_sec": 300}`),
 	})
 	time.Sleep(1 * time.Second)
 }

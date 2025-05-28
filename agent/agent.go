@@ -20,7 +20,7 @@ type Agent struct {
 	metricCounter   int
 	waitGroup       *sync.WaitGroup
 	otelShutdown    func(ctx context.Context) error
-	endpoints       agentOptions
+	options         agentOptions
 }
 
 func New(opts ...Option) *Agent {
@@ -34,16 +34,16 @@ func New(opts ...Option) *Agent {
 		rawEvidenceChan: make(chan claims.RawEvidence, 100), // Buffered channel for incoming evidence
 		shutdownChan:    make(chan struct{}),
 		waitGroup:       &sync.WaitGroup{},
-		endpoints:       options,
+		options:         options,
 	}
 }
 
 // Start begins listening for raw evidence and processing it.
 func (a *Agent) Start(ctx context.Context) {
 	log.Println("Agent started, listening for raw evidence...")
-	if a.endpoints.otelEndpoint != "" {
+	if a.options.otelEndpoint != "" {
 		var err error
-		a.otelShutdown, err = metricsSetup(ctx, a.endpoints.otelEndpoint)
+		a.otelShutdown, err = metricsSetup(ctx, a.options.otelEndpoint)
 		if err != nil {
 			log.Printf("error with instrumentation: %v", err)
 			return
@@ -135,7 +135,7 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv claims.RawEvidence) e
 	exportEvidence(rawEvidenceRef, rawEvJSON)
 	attestor := claims.NewAttestor(rawEv)
 
-	err = claims.Export(ctx, attestor, a.endpoints.attestationEndpoint)
+	err = claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
 	if err != nil {
 		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
 	}
