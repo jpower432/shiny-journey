@@ -86,7 +86,7 @@ func simulateMetrics() {
 
 func simulateEvidence(agent *agent.Agent) {
 	var digestsByName = make(map[string]string)
-	digestsByName["sha256"] = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	digestsByName["sha256"] = "9a1a8ce7b75ea6e3bb70f8d0e450df504099a04b63c97c5170696f188db59208"
 	digestSet, err := cryptoutil.NewDigestSet(digestsByName)
 	if err != nil {
 		panic(err)
@@ -147,7 +147,7 @@ func simulateEvidence(agent *agent.Agent) {
 			Digest: digestSet,
 		},
 		Decision: "allow",
-		Details:  json.RawMessage(`{"src_ip":"10.0.0.5", "dst_ip":"192.168.1.10"}`),
+		Details:  json.RawMessage(`{"src_ip":"127.0.0.1", "dst_ip":"127.0.0.1"}`),
 	})
 	time.Sleep(1 * time.Second)
 

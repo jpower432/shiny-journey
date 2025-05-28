@@ -18,3 +18,4 @@ To run the simulation:
 ```bash
 ./bin/comply-agent
 ```
+![Simulation](./docs/simulation.gif)
