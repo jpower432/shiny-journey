@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +13,8 @@ import (
 	"github.com/in-toto/go-witness/attestation"
 	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/invopop/jsonschema"
+
+	"github.com/jpower432/shiny-journey/evidence"
 )
 
 const Name = "conformance-claim"
@@ -20,11 +23,11 @@ const RunType = attestation.VerifyRunType
 
 type AssessmentAttestor struct {
 	Claim       ConformanceClaim
-	rawEvidence RawEvidence
+	rawEvidence evidence.RawEvidence
 	evidenceRef string
 }
 
-func NewAttestor(evidence RawEvidence) *AssessmentAttestor {
+func NewAttestor(evidence evidence.RawEvidence) *AssessmentAttestor {
 	return &AssessmentAttestor{
 		Claim:       ConformanceClaim{},
 		rawEvidence: evidence,
@@ -98,11 +101,17 @@ func Export(ctx context.Context, attestor attestation.Attestor, signer cryptouti
 		return err
 	}
 
-	// export attestations to Archivista
 	client := archivista.New(archivistaURL)
-	_, err = client.Store(ctx, runResults[0].SignedEnvelope)
-	if err != nil {
-		return err
+	for _, result := range runResults {
+		atts := result.Collection.Attestations
+		if len(atts) == 0 {
+			continue
+		}
+		gitoid, err := client.Store(ctx, result.SignedEnvelope)
+		if err != nil {
+			return err
+		}
+		log.Printf("gitoid: %s", gitoid)
 	}
 	return nil
 }

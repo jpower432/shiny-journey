@@ -11,7 +11,7 @@ import (
 	"github.com/oscal-compass/compliance-to-policy-go/v2/framework/actions"
 
 	"github.com/jpower432/shiny-journey/agent"
-	"github.com/jpower432/shiny-journey/claims"
+	"github.com/jpower432/shiny-journey/evidence"
 )
 
 const shutDownTimeout = 7 * time.Second
@@ -92,92 +92,108 @@ func simulateEvidence(agent *agent.Agent) {
 		panic(err)
 	}
 	// OPA Deny
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "OPA",
-		PolicyID:  "rbac-policy-001",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "OPA",
+			PolicyID:  "rbac-policy-001",
+			Decision:  "deny",
+		},
+		Resource: evidence.Resource{
 			Name:   "api-request-001",
 			Digest: digestSet,
 		},
-		Decision: "deny",
-		Details:  json.RawMessage(`{"user":"bob", "action":"delete", "resource":"prod-db"}`),
+		Details: json.RawMessage(`{"user":"bob", "action":"delete", "resource":"prod-db"}`),
 	})
 	time.Sleep(1 * time.Second)
 
 	// Kyverno Mutate
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "Kyverno",
-		PolicyID:  "psp-baseline",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "Kyverno",
+			PolicyID:  "psp-baseline",
+			Decision:  "mutate",
+		},
+		Resource: evidence.Resource{
 			Name:   "pod-frontend-xyz",
 			Digest: digestSet,
 		},
-		Decision: "mutate",
-		Details:  json.RawMessage(`{"field":"securityContext", "change":"runAsNonRoot: true"}`),
+
+		Details: json.RawMessage(`{"field":"securityContext", "change":"runAsNonRoot: true"}`),
 	})
 	time.Sleep(1 * time.Second)
 
 	// OpenSCAP Non-Compliant
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "OpenSCAP",
-		PolicyID:  "cis-ubuntu-20.04-profile",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "OpenSCAP",
+			PolicyID:  "cis-ubuntu-20.04-profile",
+			Decision:  "non_compliant",
+		},
+		Resource: evidence.Resource{
 			Name:   "web-server-007",
 			Digest: digestSet,
 		},
-		Decision: "non_compliant",
-		Details:  json.RawMessage(`{"rule_id":"xccdf_org.ssgproject.content_rule_sshd_disable_x11_forwarding", "remediation":"Set X11Forwarding to no in sshd_config"}`),
+
+		Details: json.RawMessage(`{"rule_id":"xccdf_org.ssgproject.content_rule_sshd_disable_x11_forwarding", "remediation":"Set X11Forwarding to no in sshd_config"}`),
 	})
 	time.Sleep(1 * time.Second)
 
 	// OPA Allow
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "OPA",
-		PolicyID:  "network-policy-002",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "OPA",
+			PolicyID:  "network-policy-002",
+			Decision:  "allow",
+		},
+		Resource: evidence.Resource{
 			Name:   "network-flow-abc",
 			Digest: digestSet,
 		},
-		Decision: "allow",
-		Details:  json.RawMessage(`{"src_ip":"127.0.0.1", "dst_ip":"127.0.0.1"}`),
+
+		Details: json.RawMessage(`{"src_ip":"127.0.0.1", "dst_ip":"127.0.0.1"}`),
 	})
 	time.Sleep(1 * time.Second)
 
 	// Kyverno Deny
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "Kyverno",
-		PolicyID:  "no-privileged-pods",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "Kyverno",
+			PolicyID:  "no-privileged-pods",
+			Decision:  "deny",
+		},
+		Resource: evidence.Resource{
 			Name:   "pod-privileged-test",
 			Digest: digestSet,
 		},
-		Decision: "deny",
-		Details:  json.RawMessage(`{"reason":"privileged container detected"}`),
+
+		Details: json.RawMessage(`{"reason":"privileged container detected"}`),
 	})
 	time.Sleep(1 * time.Second)
 
 	// OpenSCAP Compliant
-	agent.IngestRawEvidence(claims.RawEvidence{
-		ID:        uuid.New().String(),
-		Timestamp: time.Now(),
-		Source:    "OpenSCAP",
-		PolicyID:  "pci-dss-profile",
-		Resource: claims.Resource{
+	agent.IngestRawEvidence(evidence.RawEvidence{
+		Metadata: evidence.Metadata{
+			ID:        uuid.New().String(),
+			Timestamp: time.Now(),
+			Source:    "OpenSCAP",
+			PolicyID:  "pci-dss-profile",
+			Decision:  "compliant",
+		},
+		Resource: evidence.Resource{
 			Name:   "db-server-001",
 			Digest: digestSet,
 		},
-		Decision: "compliant",
-		Details:  json.RawMessage(`{"scan_duration_sec": 300}`),
+		Details: json.RawMessage(`{"scan_duration_sec": 300}`),
 	})
 	time.Sleep(1 * time.Second)
 }

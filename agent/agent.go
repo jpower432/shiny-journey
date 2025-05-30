@@ -11,11 +11,12 @@ import (
 	"time"
 
 	"github.com/jpower432/shiny-journey/claims"
+	"github.com/jpower432/shiny-journey/evidence"
 )
 
 // Agent handles processing raw evidence, generating claims, and exporting data.
 type Agent struct {
-	rawEvidenceChan chan claims.RawEvidence
+	rawEvidenceChan chan evidence.RawEvidence
 	shutdownChan    chan struct{}
 	metricCounter   int
 	waitGroup       *sync.WaitGroup
@@ -31,7 +32,7 @@ func New(opts ...Option) *Agent {
 	}
 
 	return &Agent{
-		rawEvidenceChan: make(chan claims.RawEvidence, 100), // Buffered channel for incoming evidence
+		rawEvidenceChan: make(chan evidence.RawEvidence, 100), // Buffered channel for incoming evidence
 		shutdownChan:    make(chan struct{}),
 		waitGroup:       &sync.WaitGroup{},
 		options:         options,
@@ -51,12 +52,12 @@ func (a *Agent) Start(ctx context.Context) {
 	}
 
 	ticker := time.NewTicker(5 * time.Second) // Simulate metrics push interval
-	defer ticker.Stop()
 
 	// Add the main processing loop to the waitGroup
 	a.waitGroup.Add(1)
 	go func() {
 		defer a.waitGroup.Done()
+		defer ticker.Stop() // Defer in the goroutine so the channel is not immediately closed.
 		for {
 			select {
 			case rawEv := <-a.rawEvidenceChan:
@@ -67,10 +68,8 @@ func (a *Agent) Start(ctx context.Context) {
 					continue
 				}
 				a.metricCounter++
-
 			case <-ticker.C:
 				a.publishMetrics()
-
 			case <-a.shutdownChan:
 				log.Println("Completing graceful shutdown operations")
 				return
@@ -115,7 +114,7 @@ func (a *Agent) Stop(ctx context.Context) {
 }
 
 // IngestRawEvidence is the entry point for policy engines to send raw data.
-func (a *Agent) IngestRawEvidence(ev claims.RawEvidence) {
+func (a *Agent) IngestRawEvidence(ev evidence.RawEvidence) {
 	select {
 	case a.rawEvidenceChan <- ev:
 	default:
@@ -124,7 +123,7 @@ func (a *Agent) IngestRawEvidence(ev claims.RawEvidence) {
 }
 
 // processEvidence maps raw data to claims and pushes to storage.
-func (a *Agent) processEvidence(ctx context.Context, rawEv claims.RawEvidence) error {
+func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence) error {
 	rawEvJSON, err := json.MarshalIndent(rawEv, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling raw evidence %s: %v", rawEv.ID, err)
@@ -132,14 +131,11 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv claims.RawEvidence) e
 	rawEvidenceHash := sha256.Sum256(rawEvJSON)
 	rawEvidenceRef := hex.EncodeToString(rawEvidenceHash[:]) // Use hash as reference
 
-	exportEvidence(rawEvidenceRef, rawEvJSON)
-	attestor := claims.NewAttestor(rawEv)
-
-	err = claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
+	err = evidence.Export(rawEvidenceRef, rawEvJSON)
 	if err != nil {
-		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
+		return err
 	}
-	return nil
+	return a.attest(ctx, rawEv)
 }
 
 // publishMetrics simulates sending metrics to an OTEL collector.
@@ -149,8 +145,11 @@ func (a *Agent) publishMetrics() {
 	fmt.Printf("Metric: compliance_agent_queue_depth, current: %d, timestamp: %s\n", len(a.rawEvidenceChan), time.Now().Format(time.RFC3339))
 }
 
-// exportEvidence simulates exporting evidence to a backend.
-// In a real scenario, this would be client.PutObject(rawEvJSON, rawEvidenceRef) to object storage.
-func exportEvidence(rawEvidenceRef string, rawEvJSON []byte) {
-	fmt.Printf("\n--- Pushing Raw Evidence to Data Lake (%s) ---\n%s\n", rawEvidenceRef, string(rawEvJSON))
+func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
+	attestor := claims.NewAttestor(rawEv)
+	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
+	if err != nil {
+		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
+	}
+	return nil
 }

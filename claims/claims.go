@@ -1,29 +1,13 @@
 package claims
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/revanite-io/sci/layer4"
+
+	"github.com/jpower432/shiny-journey/evidence"
 )
-
-// RawEvidence represents a simplified raw output from a policy engine.
-type RawEvidence struct {
-	ID        string          `json:"id"`
-	Timestamp time.Time       `json:"timestamp"`
-	Source    string          `json:"source"`
-	PolicyID  string          `json:"policyId"`
-	Resource  Resource        `json:"resource"`
-	Decision  string          `json:"decision"`
-	Details   json.RawMessage `json:"details"`
-}
-
-type Resource struct {
-	Name   string               `json:"name"`
-	Digest cryptoutil.DigestSet `json:"digest"`
-}
 
 // ConformanceClaim represents a higher-level, mapped conformance assertion.
 type ConformanceClaim struct {
@@ -36,7 +20,7 @@ type ConformanceClaim struct {
 }
 
 // PopulateAssessment simulates evaluations of evidence against policies.
-func (c *ConformanceClaim) PopulateAssessment(rawEv RawEvidence) {
+func (c *ConformanceClaim) PopulateAssessment(rawEv evidence.RawEvidence) {
 	summary := fmt.Sprintf("Resource '%s' from %s is %s against policy '%s'.",
 		rawEv.Resource, rawEv.Source, rawEv.Decision, rawEv.PolicyID)
 	c.Summary = summary
@@ -46,7 +30,7 @@ func (c *ConformanceClaim) PopulateAssessment(rawEv RawEvidence) {
 // TODO: Update this to accept an plan and provider for assessment generation.
 // simulateMapping calls a mapping type depending on evidence type.
 // In a real scenario, this would be delegated to a provider.
-func simulatedCheck(rawEv RawEvidence) layer4.Assessment {
+func simulatedCheck(rawEv evidence.RawEvidence) layer4.Assessment {
 	assessment := layer4.Assessment{
 		RequirementID: "placeholder",
 	}
@@ -59,10 +43,10 @@ func simulatedCheck(rawEv RawEvidence) layer4.Assessment {
 	return assessment
 }
 
-type methodMapperFunc func(rawEv RawEvidence) layer4.AssessmentMethod
+type methodMapperFunc func(rawEv evidence.RawEvidence) layer4.AssessmentMethod
 
 var sourceToMethod = map[string]methodMapperFunc{
-	"OPA": func(rawEv RawEvidence) layer4.AssessmentMethod {
+	"OPA": func(rawEv evidence.RawEvidence) layer4.AssessmentMethod {
 		method := layer4.AssessmentMethod{
 			Name:   "OPA",
 			Run:    true,
@@ -77,7 +61,7 @@ var sourceToMethod = map[string]methodMapperFunc{
 		}
 		return method
 	},
-	"Kyverno": func(rawEv RawEvidence) layer4.AssessmentMethod {
+	"Kyverno": func(rawEv evidence.RawEvidence) layer4.AssessmentMethod {
 		method := layer4.AssessmentMethod{
 			Name:   "Kyverno",
 			Run:    true,
@@ -93,7 +77,7 @@ var sourceToMethod = map[string]methodMapperFunc{
 		}
 		return method
 	},
-	"OpenSCAP": func(rawEv RawEvidence) layer4.AssessmentMethod {
+	"OpenSCAP": func(rawEv evidence.RawEvidence) layer4.AssessmentMethod {
 		method := layer4.AssessmentMethod{
 			Name:   "OpenSCAP",
 			Run:    true,
