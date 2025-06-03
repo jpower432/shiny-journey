@@ -35,8 +35,9 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var planConfig, archivistaURL string
+	var planConfig, archivistaURL, otelEndpoint string
 	flag.StringVar(&archivistaURL, "archvista-url", "http://localhost:8082", "URL for Archivista")
+	flag.StringVar(&otelEndpoint, "otel-endpoint", "", "Endpoint for the OpenTelemetry Collector")
 	flag.StringVar(&planConfig, "plan", "docs/samples/plan.yaml", "Location for plan config")
 	flag.Parse()
 
@@ -59,7 +60,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()))
+	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()), agent.WithOTELCollectorEndpoint(otelEndpoint))
 	runner.RunSimulation(ctx, agt)
 
 	return nil

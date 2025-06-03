@@ -10,17 +10,29 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"github.com/jpower432/shiny-journey/claims"
 	"github.com/jpower432/shiny-journey/evidence"
+)
+
+const name = "go.opentelemetry.io/otel/example/agent"
+
+var (
+	meter           = otel.Meter(name)
+	evidenceCounter metric.Int64Counter
+	otelShutdown    func(ctx context.Context) error
 )
 
 // Agent handles processing raw evidence, generating claims, and exporting data.
 type Agent struct {
 	rawEvidenceChan chan evidence.RawEvidence
 	shutdownChan    chan struct{}
-	metricCounter   int
 	waitGroup       *sync.WaitGroup
-	otelShutdown    func(ctx context.Context) error
 	options         agentOptions
 }
 
@@ -43,21 +55,30 @@ func New(opts ...Option) *Agent {
 func (a *Agent) Start(ctx context.Context) {
 	log.Println("Agent started, listening for raw evidence...")
 	if a.options.otelEndpoint != "" {
+		log.Printf("Configuring metrics exporting to %s", a.options.otelEndpoint)
 		var err error
-		a.otelShutdown, err = metricsSetup(ctx, a.options.otelEndpoint)
+		conn, err := grpc.NewClient(a.options.otelEndpoint,
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+		)
 		if err != nil {
-			log.Printf("error with instrumentation: %v", err)
-			return
+			log.Fatalf("failed to create gRPC connection to collector: %v", err)
+		}
+		otelShutdown, err = metricsSetup(ctx, conn)
+		if err != nil {
+			log.Fatalf("error with instrumentation: %v", err)
+		}
+		evidenceCounter, err = meter.Int64Counter("evidence.processed",
+			metric.WithDescription("The number of evidence artifacts processed."),
+			metric.WithUnit("{evidences}"))
+		if err != nil {
+			log.Fatalf("%v", err)
 		}
 	}
-
-	ticker := time.NewTicker(5 * time.Second) // Simulate metrics push interval
 
 	// Add the main processing loop to the waitGroup
 	a.waitGroup.Add(1)
 	go func() {
 		defer a.waitGroup.Done()
-		defer ticker.Stop() // Defer in the goroutine so the channel is not immediately closed.
 		for {
 			select {
 			case rawEv := <-a.rawEvidenceChan:
@@ -67,11 +88,9 @@ func (a *Agent) Start(ctx context.Context) {
 					log.Printf("Skipping export for raw evidence %s due to processing error.: %v", rawEv.ID, err)
 					continue
 				}
-				a.metricCounter++
-			case <-ticker.C:
-				a.publishMetrics()
+				a.increment(ctx, rawEv)
 			case <-a.shutdownChan:
-				log.Println("Completing graceful shutdown operations")
+				log.Println("Completing graceful shutdown operations...")
 				return
 			}
 		}
@@ -85,13 +104,13 @@ func (a *Agent) Stop(ctx context.Context) {
 	// Signal the main processing loop to shut down
 	close(a.shutdownChan)
 
-	if a.otelShutdown != nil {
+	if otelShutdown != nil {
 		a.waitGroup.Add(1)
 		go func() {
 			defer a.waitGroup.Done()
 			otelCtx, otelCancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer otelCancel()
-			if err := a.otelShutdown(otelCtx); err != nil {
+			if err := otelShutdown(otelCtx); err != nil {
 				log.Printf("Error during OpenTelemetry shutdown: %v", err)
 			}
 		}()
@@ -105,7 +124,7 @@ func (a *Agent) Stop(ctx context.Context) {
 
 	select {
 	case <-waitDone:
-		log.Println("Graceful shutdown complete.")
+		log.Println("Graceful shutdown complete...")
 		return
 	case <-ctx.Done():
 		log.Println("Timed out during graceful shutdown. Some cleanup operations might not have completed.")
@@ -138,11 +157,15 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence)
 	return a.attest(ctx, rawEv)
 }
 
-// publishMetrics simulates sending metrics to an OTEL collector.
-func (a *Agent) publishMetrics() {
-	fmt.Printf("\n--- Pushing Metrics to OTEL ---\n")
-	fmt.Printf("Metric: processed_compliance_events_total, count: %d, timestamp: %s\n", a.metricCounter, time.Now().Format(time.RFC3339))
-	fmt.Printf("Metric: compliance_agent_queue_depth, current: %d, timestamp: %s\n", len(a.rawEvidenceChan), time.Now().Format(time.RFC3339))
+func (a *Agent) increment(ctx context.Context, rawEnv evidence.RawEvidence) {
+	if evidenceCounter == nil {
+		return
+	}
+	attrs := []attribute.KeyValue{
+		attribute.String("evidence_source", rawEnv.Source),
+		attribute.String("evidence_resource", rawEnv.Resource.Name),
+	}
+	evidenceCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
 
 func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
