@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/jpower432/shiny-journey/agent/metrics"
 	"github.com/jpower432/shiny-journey/claims"
 	"github.com/jpower432/shiny-journey/evidence"
 )
@@ -63,11 +64,11 @@ func (a *Agent) Start(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("failed to create gRPC connection to collector: %v", err)
 		}
-		otelShutdown, err = metricsSetup(ctx, conn)
+		otelShutdown, err = metrics.Setup(ctx, conn)
 		if err != nil {
 			log.Fatalf("error with instrumentation: %v", err)
 		}
-		evidenceCounter, err = meter.Int64Counter("evidence.processed",
+		evidenceCounter, err = meter.Int64Counter("evidence_processed",
 			metric.WithDescription("The number of evidence artifacts processed."),
 			metric.WithUnit("{evidences}"))
 		if err != nil {

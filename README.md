@@ -19,3 +19,11 @@ To run the simulation:
 ./bin/comply-agent
 ```
 ![Simulation](./docs/simulation.gif)
+
+## Run Demo
+
+This will be the agent, build and deploy the dashboard, and push metrics.
+```bash
+make deploy
+make demo
+```

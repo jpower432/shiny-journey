@@ -32,3 +32,6 @@ NOTES.md
 # binaries
 bin/
 data/
+
+# Ignore the build DAC artifacts
+built/

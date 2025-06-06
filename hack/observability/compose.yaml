@@ -28,7 +28,7 @@ services:
     command: "--config=/etc/perses/config/config.yaml"
     volumes:
       - ./perses.yaml:/etc/perses/config/config.yaml
-      - ./data:/perses
+      - ./provisioning:/etc/perses/provisioning
     depends_on:
       - prometheus
 

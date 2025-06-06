@@ -1,4 +1,4 @@
-package agent
+package metrics
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 
 var serviceName = semconv.ServiceNameKey.String("agent")
 
-// metricSetup completes setup of the Otel SDK with a metrics providers.
-func metricsSetup(ctx context.Context, conn *grpc.ClientConn) (shutdown func(context.Context) error, err error) {
+// Setup completes setup of the Otel SDK with a metrics providers.
+func Setup(ctx context.Context, conn *grpc.ClientConn) (shutdown func(context.Context) error, err error) {
 	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
 	if err != nil {
 		return nil, err
