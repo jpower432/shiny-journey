@@ -59,6 +59,7 @@ func (a *AssessmentAttestor) Attest(ctx *attestation.AttestationContext) error {
 		RawEvidenceRef: a.evidenceRef,
 	}
 	claim.PopulateAssessment(a.rawEvidence)
+	a.Claim = claim
 	return nil
 }
 
@@ -73,7 +74,7 @@ func (a *AssessmentAttestor) Schema() *jsonschema.Schema {
 }
 
 func (a *AssessmentAttestor) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&a.Claim)
+	return a.Claim.MarshalJSON()
 }
 
 func (a *AssessmentAttestor) UnmarshalJSON(data []byte) error {

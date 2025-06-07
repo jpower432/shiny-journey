@@ -1,6 +1,7 @@
 package claims
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,6 +18,33 @@ type ConformanceClaim struct {
 	RawEvidenceRef string            `json:"rawEvidenceRef"`
 	Summary        string            `json:"summary"`
 	Assessment     layer4.Assessment `json:"assessment"`
+}
+
+func (c *ConformanceClaim) MarshalJSON() ([]byte, error) {
+	outputMap := make(map[string]interface{})
+	outputMap["clamId"] = c.ClaimID
+	outputMap["timestamp"] = c.Timestamp
+	outputMap["resourceRef"] = c.ResourceRef
+	outputMap["summary"] = c.Summary
+	assessment := make(map[string]interface{})
+	assessment["requirement_id"] = c.Assessment.RequirementID
+
+	methods := []map[string]interface{}{}
+	for _, method := range c.Assessment.Methods {
+		methodMap := make(map[string]interface{})
+		methodMap["name"] = method.Name
+		methodMap["description"] = method.Description
+		methodMap["run"] = method.Run
+		if method.Result != nil {
+			methodMap["result"] = map[string]interface{}{
+				"status": method.Result.Status,
+			}
+		}
+		methods = append(methods, methodMap)
+	}
+	assessment["methods"] = methods
+	outputMap["assessment"] = assessment
+	return json.Marshal(outputMap)
 }
 
 // PopulateAssessment simulates evaluations of evidence against policies.
