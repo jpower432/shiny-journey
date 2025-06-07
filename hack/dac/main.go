@@ -10,6 +10,7 @@ import (
 	panelgroup "github.com/perses/perses/go-sdk/panel-group"
 	listVar "github.com/perses/perses/go-sdk/variable/list-variable"
 	txtVar "github.com/perses/perses/go-sdk/variable/text-variable"
+	gaugePanel "github.com/perses/plugins/gaugechart/sdk/go"
 	markdownPanel "github.com/perses/plugins/markdown/sdk/go"
 	"github.com/perses/plugins/prometheus/sdk/go/query"
 	labelValuesVar "github.com/perses/plugins/prometheus/sdk/go/variable/label-values"
@@ -75,6 +76,24 @@ func main() {
 				panel.AddQuery(
 					query.PromQL(
 						`rate(evidence_processed_total{evidence_resource=~"$evidenceResource", evidence_source=~"$evidenceSource", job="agent"}[5m])`,
+					),
+				),
+			),
+
+			panelgroup.AddPanel("Failures",
+				gaugePanel.Chart(),
+				panel.AddQuery(
+					query.PromQL(
+						`sum(system_failing_controls_total{resource=~"$evidenceResource", job="agent"})`,
+					),
+				),
+			),
+
+			panelgroup.AddPanel("Passing",
+				gaugePanel.Chart(),
+				panel.AddQuery(
+					query.PromQL(
+						`sum(system_passing_controls_total{resource=~"$evidenceResource", job="agent"})`,
 					),
 				),
 			),

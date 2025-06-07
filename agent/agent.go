@@ -24,10 +24,17 @@ import (
 const name = "go.opentelemetry.io/otel/example/agent"
 
 var (
-	meter           = otel.Meter(name)
-	evidenceCounter metric.Int64Counter
-	otelShutdown    func(ctx context.Context) error
+	meter                     = otel.Meter(name)
+	evidenceCounter           metric.Int64Counter
+	passingControlsObservable metric.Float64ObservableGauge
+	failingControlsObservable metric.Float64ObservableGauge
+	otelShutdown              func(ctx context.Context) error
 )
+
+type State struct {
+	mu     sync.RWMutex
+	claims map[string]claims.ConformanceClaim
+}
 
 // Agent handles processing raw evidence, generating claims, and exporting data.
 type Agent struct {
@@ -35,6 +42,7 @@ type Agent struct {
 	shutdownChan    chan struct{}
 	waitGroup       *sync.WaitGroup
 	options         agentOptions
+	state           State
 }
 
 func New(opts ...Option) *Agent {
@@ -49,6 +57,9 @@ func New(opts ...Option) *Agent {
 		shutdownChan:    make(chan struct{}),
 		waitGroup:       &sync.WaitGroup{},
 		options:         options,
+		state: State{
+			claims: make(map[string]claims.ConformanceClaim),
+		},
 	}
 }
 
@@ -73,6 +84,39 @@ func (a *Agent) Start(ctx context.Context) {
 			metric.WithUnit("{evidences}"))
 		if err != nil {
 			log.Fatalf("%v", err)
+		}
+
+		passingControlsObservable, err = meter.Float64ObservableGauge(
+			"system_passing_controls_total",
+			metric.WithDescription("Total number of failing controls for a system against a standard."),
+		)
+		if err != nil {
+			log.Fatalf("failed to create complianceScore observable gauge: %v", err)
+		}
+
+		failingControlsObservable, err = meter.Float64ObservableGauge(
+			"system_failing_controls_total",
+			metric.WithDescription("Total number of failing controls for a system against a standard."),
+		)
+		if err != nil {
+			log.Fatalf("failed to create failingControls observable gauge: %v", err)
+		}
+
+		_, err = meter.RegisterCallback(
+			func(ctx context.Context, observer metric.Observer) error {
+				a.state.mu.RLock()
+				defer a.state.mu.RUnlock()
+
+				for _, claim := range a.state.claims {
+					observe(observer, claim)
+				}
+				return nil
+			},
+			passingControlsObservable,
+			failingControlsObservable,
+		)
+		if err != nil {
+			log.Fatalf("failed to register callback: %v", err)
 		}
 	}
 
@@ -169,11 +213,39 @@ func (a *Agent) increment(ctx context.Context, rawEnv evidence.RawEvidence) {
 	evidenceCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
 }
 
+func observe(observer metric.Observer, claim claims.ConformanceClaim) {
+	if passingControlsObservable == nil || failingControlsObservable == nil {
+		return
+	}
+	attributes := metric.WithAttributes(
+		attribute.String("resource", claim.ResourceRef),
+		attribute.String("requirement", claim.Assessment.RequirementID),
+		attribute.String("attestation_id", claim.ClaimID),
+	)
+
+	var passing, failing float64
+	for _, method := range claim.Assessment.Methods {
+		if method.Result.Status == "NOT_COMPLIANT" {
+			failing++
+			break
+		}
+		passing++
+	}
+
+	observer.ObserveFloat64(passingControlsObservable, passing, attributes)
+	observer.ObserveFloat64(failingControlsObservable, failing, attributes)
+}
+
 func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
 	attestor := claims.NewAttestor(rawEv)
 	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
 	if err != nil {
 		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
 	}
+
+	claim := attestor.Claim
+	a.state.mu.Lock()
+	a.state.claims[claim.ClaimID] = claim
+	a.state.mu.Unlock()
 	return nil
 }
