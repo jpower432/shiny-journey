@@ -133,7 +133,7 @@ func (a *Agent) Start(ctx context.Context) {
 					log.Printf("Skipping export for raw evidence %s due to processing error.: %v", rawEv.ID, err)
 					continue
 				}
-				a.increment(ctx, rawEv)
+				increment(ctx, rawEv)
 			case <-a.shutdownChan:
 				log.Println("Completing graceful shutdown operations...")
 				return
@@ -202,7 +202,21 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence)
 	return a.attest(ctx, rawEv)
 }
 
-func (a *Agent) increment(ctx context.Context, rawEnv evidence.RawEvidence) {
+func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
+	attestor := claims.NewAttestor(rawEv)
+	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
+	if err != nil {
+		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
+	}
+
+	claim := attestor.Claim
+	a.state.mu.Lock()
+	a.state.claims[claim.ClaimID] = claim
+	a.state.mu.Unlock()
+	return nil
+}
+
+func increment(ctx context.Context, rawEnv evidence.RawEvidence) {
 	if evidenceCounter == nil {
 		return
 	}
@@ -234,18 +248,4 @@ func observe(observer metric.Observer, claim claims.ConformanceClaim) {
 
 	observer.ObserveFloat64(passingControlsObservable, passing, attributes)
 	observer.ObserveFloat64(failingControlsObservable, failing, attributes)
-}
-
-func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
-	attestor := claims.NewAttestor(rawEv)
-	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
-	if err != nil {
-		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
-	}
-
-	claim := attestor.Claim
-	a.state.mu.Lock()
-	a.state.claims[claim.ClaimID] = claim
-	a.state.mu.Unlock()
-	return nil
 }
