@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
 
-	"github.com/google/uuid"
 	gowitness "github.com/in-toto/go-witness"
 	"github.com/in-toto/go-witness/archivista"
 	"github.com/in-toto/go-witness/attestation"
 	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/invopop/jsonschema"
+	"github.com/revanite-io/sci/layer4"
 
 	"github.com/jpower432/shiny-journey/evidence"
 )
@@ -22,15 +21,17 @@ const Type = "https://example.com/conformance-claim/v1"
 const RunType = attestation.VerifyRunType
 
 type AssessmentAttestor struct {
-	Claim       ConformanceClaim
+	Claim       *ConformanceClaim
 	rawEvidence evidence.RawEvidence
+	plan        layer4.Layer4
 	evidenceRef string
 }
 
-func NewAttestor(evidence evidence.RawEvidence) *AssessmentAttestor {
+func NewAttestor(evidence evidence.RawEvidence, rawEnvRef string, plan layer4.Layer4) *AssessmentAttestor {
 	return &AssessmentAttestor{
-		Claim:       ConformanceClaim{},
+		plan:        plan,
 		rawEvidence: evidence,
+		evidenceRef: rawEnvRef,
 	}
 }
 
@@ -51,14 +52,7 @@ func (a *AssessmentAttestor) RunType() attestation.RunType {
 }
 
 func (a *AssessmentAttestor) Attest(ctx *attestation.AttestationContext) error {
-	claimID := uuid.New().String()
-	claim := ConformanceClaim{
-		ClaimID:        claimID,
-		Timestamp:      time.Now(),
-		ResourceRef:    a.rawEvidence.Resource.Name,
-		RawEvidenceRef: a.evidenceRef,
-	}
-	claim.PopulateAssessment(a.rawEvidence)
+	claim := NewFromEvidence(a.rawEvidence, a.evidenceRef, a.plan)
 	a.Claim = claim
 	return nil
 }
@@ -78,7 +72,7 @@ func (a *AssessmentAttestor) MarshalJSON() ([]byte, error) {
 }
 
 func (a *AssessmentAttestor) UnmarshalJSON(data []byte) error {
-	if err := json.Unmarshal(data, &a.Claim); err != nil {
+	if err := json.Unmarshal(data, a.Claim); err != nil {
 		return err
 	}
 

@@ -101,7 +101,7 @@ func simulateEvidence(agent *agent.Agent) {
 			Decision:  "deny",
 		},
 		Resource: evidence.Resource{
-			Name:   "api-request-001",
+			Name:   "web-server-007",
 			Digest: digestSet,
 		},
 		Details: json.RawMessage(`{"user":"bob", "action":"delete", "resource":"prod-db"}`),
@@ -154,7 +154,7 @@ func simulateEvidence(agent *agent.Agent) {
 			Decision:  "allow",
 		},
 		Resource: evidence.Resource{
-			Name:   "network-flow-abc",
+			Name:   "pod-frontend-xyz",
 			Digest: digestSet,
 		},
 
@@ -172,7 +172,7 @@ func simulateEvidence(agent *agent.Agent) {
 			Decision:  "deny",
 		},
 		Resource: evidence.Resource{
-			Name:   "pod-privileged-test",
+			Name:   "pod-frontend-xyz",
 			Digest: digestSet,
 		},
 
@@ -190,7 +190,7 @@ func simulateEvidence(agent *agent.Agent) {
 			Decision:  "compliant",
 		},
 		Resource: evidence.Resource{
-			Name:   "db-server-001",
+			Name:   "web-server-007",
 			Digest: digestSet,
 		},
 		Details: json.RawMessage(`{"scan_duration_sec": 300}`),

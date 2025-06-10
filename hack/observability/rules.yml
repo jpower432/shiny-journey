@@ -1,0 +1,40 @@
+# Created with assistance from AI
+groups:
+  - name: compliance_metrics
+    rules:
+      - record: baseline_compliance_percentage
+        expr: |
+          count by (baseline_id, resource) (compliance_assessment_status{assessment_status_raw="COMPLIANT"})
+          /
+          count by (baseline_id, resource) (compliance_assessment_status{assessment_status_raw=~"COMPLIANT|NOT_COMPLIANT"})
+          * 100
+        labels:
+          metric_type: "compliance_percentage_overall"
+
+      - record: requirement_binary_compliance_status
+        expr: |
+          min by (baseline_id, resource, requirement_id, attestation_id) (
+            compliance_assessment_status{assessment_status_raw!="NOT_APPLICABLE"}
+          )
+        labels:
+          metric_type: "binary_compliance_status_requirement"
+
+      - record: applicable_assessments_total
+        expr: |
+          sum by (baseline_id, resource, requirement_id, attestation_id) (
+            compliance_assessment_status{assessment_status_raw=~"COMPLIANT|NOT_COMPLIANT"}
+          )
+        labels:
+          metric_type: "applicable_count"
+
+      - record: compliant_requirements_count
+        expr: |
+          count by (baseline_id, resource, attestation_id) (requirement_binary_compliance_status == 1)
+        labels:
+          metric_type: "compliant_requirements"
+
+      - record: non_compliant_requirements_count
+        expr: |
+          count by (baseline_id, resource, attestation_id) (requirement_binary_compliance_status == 0)
+        labels:
+          metric_type: "non_compliant_requirements"

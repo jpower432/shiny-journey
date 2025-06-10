@@ -10,25 +10,19 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
+	"github.com/revanite-io/sci/layer4"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/jpower432/shiny-journey/agent/metrics"
 	"github.com/jpower432/shiny-journey/claims"
 	"github.com/jpower432/shiny-journey/evidence"
 )
 
-const name = "go.opentelemetry.io/otel/example/agent"
-
 var (
-	meter                     = otel.Meter(name)
-	evidenceCounter           metric.Int64Counter
-	passingControlsObservable metric.Float64ObservableGauge
-	failingControlsObservable metric.Float64ObservableGauge
-	otelShutdown              func(ctx context.Context) error
+	otelShutdown func(ctx context.Context) error
+	plan         = layer4.Layer4{
+		CatalogID: "EXMP-10001",
+	}
 )
 
 type State struct {
@@ -75,49 +69,11 @@ func (a *Agent) Start(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("failed to create gRPC connection to collector: %v", err)
 		}
-		otelShutdown, err = metrics.Setup(ctx, conn)
+		otelShutdown, err = metricsSetup(ctx, conn)
 		if err != nil {
 			log.Fatalf("error with instrumentation: %v", err)
 		}
-		evidenceCounter, err = meter.Int64Counter("evidence_processed",
-			metric.WithDescription("The number of evidence artifacts processed."),
-			metric.WithUnit("{evidences}"))
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
-
-		passingControlsObservable, err = meter.Float64ObservableGauge(
-			"system_passing_controls_total",
-			metric.WithDescription("Total number of failing controls for a system against a standard."),
-		)
-		if err != nil {
-			log.Fatalf("failed to create complianceScore observable gauge: %v", err)
-		}
-
-		failingControlsObservable, err = meter.Float64ObservableGauge(
-			"system_failing_controls_total",
-			metric.WithDescription("Total number of failing controls for a system against a standard."),
-		)
-		if err != nil {
-			log.Fatalf("failed to create failingControls observable gauge: %v", err)
-		}
-
-		_, err = meter.RegisterCallback(
-			func(ctx context.Context, observer metric.Observer) error {
-				a.state.mu.RLock()
-				defer a.state.mu.RUnlock()
-
-				for _, claim := range a.state.claims {
-					observe(observer, claim)
-				}
-				return nil
-			},
-			passingControlsObservable,
-			failingControlsObservable,
-		)
-		if err != nil {
-			log.Fatalf("failed to register callback: %v", err)
-		}
+		metricsConfigure(&a.state)
 	}
 
 	// Add the main processing loop to the waitGroup
@@ -199,11 +155,11 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence)
 	if err != nil {
 		return err
 	}
-	return a.attest(ctx, rawEv)
+	return a.attest(ctx, rawEv, rawEvidenceRef)
 }
 
-func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
-	attestor := claims.NewAttestor(rawEv)
+func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence, rawEnvRef string) error {
+	attestor := claims.NewAttestor(rawEv, rawEnvRef, plan)
 	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
 	if err != nil {
 		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
@@ -211,41 +167,7 @@ func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence) error {
 
 	claim := attestor.Claim
 	a.state.mu.Lock()
-	a.state.claims[claim.ClaimID] = claim
+	a.state.claims[claim.ClaimID] = *claim
 	a.state.mu.Unlock()
 	return nil
-}
-
-func increment(ctx context.Context, rawEnv evidence.RawEvidence) {
-	if evidenceCounter == nil {
-		return
-	}
-	attrs := []attribute.KeyValue{
-		attribute.String("evidence_source", rawEnv.Source),
-		attribute.String("evidence_resource", rawEnv.Resource.Name),
-	}
-	evidenceCounter.Add(ctx, 1, metric.WithAttributes(attrs...))
-}
-
-func observe(observer metric.Observer, claim claims.ConformanceClaim) {
-	if passingControlsObservable == nil || failingControlsObservable == nil {
-		return
-	}
-	attributes := metric.WithAttributes(
-		attribute.String("resource", claim.ResourceRef),
-		attribute.String("requirement", claim.Assessment.RequirementID),
-		attribute.String("attestation_id", claim.ClaimID),
-	)
-
-	var passing, failing float64
-	for _, method := range claim.Assessment.Methods {
-		if method.Result.Status == "NOT_COMPLIANT" {
-			failing++
-			break
-		}
-		passing++
-	}
-
-	observer.ObserveFloat64(passingControlsObservable, passing, attributes)
-	observer.ObserveFloat64(failingControlsObservable, failing, attributes)
 }

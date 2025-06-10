@@ -5,9 +5,7 @@ build:
 PHONY: build
 
 deploy:
-	@cd ./hack/observability
-	podman-compose up
-	@cd -
+	podman-compose -f ./hack/observability/compose.yaml up
 
 build-dac:
 	percli dac build -f hack/dac/main.go -ojson
