@@ -1,0 +1,21 @@
+{
+  "kind": "Datasource",
+  "metadata": {
+    "name": "prometheuslocal",
+    "project": "shinyjourney"
+  },
+  "spec": {
+    "display": {
+      "name": "Prometheus Local",
+      "description": "Prometheus local instance"
+    },
+    "default": true,
+    "plugin": {
+      "kind": "PrometheusDatasource",
+      "spec": {
+        "directUrl": "http://localhost:9090",
+        "scrapeInterval": ""
+      }
+    }
+  }
+}

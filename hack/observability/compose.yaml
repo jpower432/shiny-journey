@@ -1,0 +1,37 @@
+version: "3"
+services:
+  prometheus:
+    image: "docker.io/prom/prometheus:v3.4.1"
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --web.enable-otlp-receiver
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+    ports:
+      - "9090:9090"
+
+  collector:
+    image: "docker.io/otel/opentelemetry-collector-contrib:0.127.0"
+    restart: unless-stopped
+    command: ["--config=/etc/otel-collector.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector.yaml
+    ports:
+      - "4317:4317"
+    depends_on:
+      - prometheus
+
+  perses:
+    image: "docker.io/persesdev/perses:v0.51.0-beta.1"
+    restart: unless-stopped
+    ports:
+      - "8083:8080"
+    command: "--config=/etc/perses/config/config.yaml"
+    volumes:
+      - ./perses.yaml:/etc/perses/config/config.yaml
+      - ./provisioning:/etc/perses/provisioning
+    depends_on:
+      - prometheus
+

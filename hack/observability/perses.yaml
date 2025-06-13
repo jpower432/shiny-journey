@@ -1,0 +1,19 @@
+database:
+  file:
+    extension: "json"
+    folder: "/perses"
+    case_sensitive: false
+security:
+  enable_auth: false
+
+ephemeral_dashboard:
+  enable: true
+  cleanup_interval: "1h"
+
+provisioning:
+  folders:
+    - "/etc/perses/provisioning"
+
+frontend:
+  explorer:
+    enable: true
