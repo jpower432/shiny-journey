@@ -1,6 +1,6 @@
 # shiny-journey
 
-A prototype for building evidence/evaluators collectors at to detect compliance drift at runtime.
+A prototype for building evidence collectors and evaluators at to detect compliance drift at runtime.
 
 
 ## Build
@@ -22,7 +22,7 @@ To run the simulation:
 
 ## Run Demo
 
-This will be the agent, build and deploy the dashboard, and push metrics.
+This will build the agent, build and deploy the dashboard, and push metrics.
 ```bash
 make deploy
 make demo
