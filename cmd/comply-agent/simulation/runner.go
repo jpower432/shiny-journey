@@ -8,7 +8,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/in-toto/go-witness/cryptoutil"
-	"github.com/oscal-compass/compliance-to-policy-go/v2/framework/actions"
 
 	"github.com/jpower432/shiny-journey/agent"
 	"github.com/jpower432/shiny-journey/evidence"
@@ -25,46 +24,10 @@ type Runner struct {
 
 // NewRunner creates a new C2P Agent Runner.
 func NewRunner() *Runner {
-	return &Runner{}
-}
-
-// LoadProviders loads plugin information based on the Assessment Plan.
-func (r *Runner) LoadProviders(plan actions.PlanRef) error {
-	/*
-		c2pConfig := framework.DefaultConfig()
-		manager, err := framework.NewPluginManager(c2pConfig)
-		if err != nil {
-			return err
-		}
-		mn, err := manager.FindRequestedPlugins([]plugin.ID{plan.PluginID})
-		if err != nil {
-			return err
-		}
-		providers, err := manager.LaunchPolicyPlugins(mn, nil)
-		r.Cleanup = manager.Clean
-		if err != nil {
-			return err
-		}
-		r.providers = providers
-		r.plan = plan
-		return nil
-	*/
-	r.Cleanup = func() {
+	return &Runner{Cleanup: func() {
 		log.Println("Cleaning")
-	}
-	return nil
+	}}
 }
-
-/*
-func (r *Runner) Run(ctx context.Context, agt *agent.Agent) {
-	go agt.Start(ctx)
-	<-ctx.Done()
-	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), shutDownTimeout)
-	defer cancelShutdown()
-	agt.Stop(shutdownCtx)
-	r.Cleanup()
-}
-*/
 
 func (r *Runner) RunSimulation(ctx context.Context, agt *agent.Agent) {
 	defer r.Cleanup()
