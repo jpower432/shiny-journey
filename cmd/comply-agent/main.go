@@ -16,9 +16,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/goccy/go-yaml"
 	"github.com/in-toto/go-witness/cryptoutil"
-	"github.com/oscal-compass/compliance-to-policy-go/v2/framework/actions"
 
 	"github.com/jpower432/shiny-journey/agent"
 	"github.com/jpower432/shiny-journey/cmd/comply-agent/simulation"
@@ -35,30 +33,12 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var planConfig, archivistaURL, otelEndpoint string
+	var archivistaURL, otelEndpoint string
 	flag.StringVar(&archivistaURL, "archvista-url", "http://localhost:8082", "URL for Archivista")
 	flag.StringVar(&otelEndpoint, "otel-endpoint", "", "Endpoint for the OpenTelemetry Collector")
-	flag.StringVar(&planConfig, "plan", "docs/samples/plan.yaml", "Location for plan config")
 	flag.Parse()
 
 	runner := simulation.NewRunner()
-
-	// planRef is a stand-in. This would eventually be an SCI L3 policy
-	var planRef actions.PlanRef
-	file, err := os.Open(planConfig)
-	if err != nil {
-		return err
-	}
-	planDecoder := yaml.NewDecoder(file)
-	err = planDecoder.Decode(&planRef)
-	if err != nil {
-		return err
-	}
-
-	if err := runner.LoadProviders(planRef); err != nil {
-		runner.Cleanup()
-		return err
-	}
 
 	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()), agent.WithOTELCollectorEndpoint(otelEndpoint))
 	runner.RunSimulation(ctx, agt)
