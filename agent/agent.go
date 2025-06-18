@@ -15,7 +15,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/jpower432/shiny-journey/claims"
-	"github.com/jpower432/shiny-journey/evidence"
+	"github.com/jpower432/shiny-journey/claims/backends/archivista"
+	"github.com/jpower432/shiny-journey/claims/evidence"
+	"github.com/jpower432/shiny-journey/claims/outputs"
 )
 
 var (
@@ -25,18 +27,13 @@ var (
 	}
 )
 
-type State struct {
-	mu     sync.RWMutex
-	claims map[string]claims.ConformanceClaim
-}
-
 // Agent handles processing raw evidence, generating claims, and exporting data.
 type Agent struct {
 	rawEvidenceChan chan evidence.RawEvidence
 	shutdownChan    chan struct{}
 	waitGroup       *sync.WaitGroup
 	options         agentOptions
-	state           State
+	store           *claims.Store
 }
 
 func New(opts ...Option) *Agent {
@@ -51,9 +48,7 @@ func New(opts ...Option) *Agent {
 		shutdownChan:    make(chan struct{}),
 		waitGroup:       &sync.WaitGroup{},
 		options:         options,
-		state: State{
-			claims: make(map[string]claims.ConformanceClaim),
-		},
+		store:           claims.NewStore(),
 	}
 }
 
@@ -73,7 +68,7 @@ func (a *Agent) Start(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("error with instrumentation: %v", err)
 		}
-		metricsConfigure(&a.state)
+		metricsConfigure(a.store)
 	}
 
 	// Add the main processing loop to the waitGroup
@@ -159,15 +154,12 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence)
 }
 
 func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence, rawEnvRef string) error {
-	attestor := claims.NewAttestor(rawEv, rawEnvRef, plan)
-	err := claims.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
+	attestor := outputs.NewAttestor(rawEv, rawEnvRef, plan)
+	err := archivista.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
 	if err != nil {
 		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
 	}
 
-	claim := attestor.Claim
-	a.state.mu.Lock()
-	a.state.claims[claim.ClaimID] = *claim
-	a.state.mu.Unlock()
+	a.store.Add(*attestor.Claim)
 	return nil
 }

@@ -1,7 +1,6 @@
 # shiny-journey
 
-A prototype for building evidence collectors and evaluators at to detect compliance drift at runtime.
-
+A prototype runtime agent for evidence collection and evaluation to detect compliance drift at runtime.
 
 ## Build
 
@@ -23,6 +22,8 @@ To run the simulation:
 ## Run Demo
 
 This will build the agent, build and deploy the dashboard, and push metrics.
+> Note: Archivista must already be running for this to function correctly.
+
 ```bash
 make deploy
 make demo
