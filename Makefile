@@ -16,3 +16,6 @@ deploy-dac:
 
 run:
 	./bin/comply-agent --otel-endpoint localhost:4317
+
+run-loop:
+	./bin/comply-agent --otel-endpoint localhost:4317 --continuous

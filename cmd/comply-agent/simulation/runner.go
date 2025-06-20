@@ -10,7 +10,7 @@ import (
 	"github.com/in-toto/go-witness/cryptoutil"
 
 	"github.com/jpower432/shiny-journey/agent"
-	"github.com/jpower432/shiny-journey/evidence"
+	"github.com/jpower432/shiny-journey/claims/evidence"
 )
 
 const shutDownTimeout = 7 * time.Second
@@ -29,16 +29,43 @@ func NewRunner() *Runner {
 	}}
 }
 
-func (r *Runner) RunSimulation(ctx context.Context, agt *agent.Agent) {
+// RunSimulationInstance executes the simulation one time and stops the agent.
+func (r *Runner) RunSimulationInstance(ctx context.Context, agt *agent.Agent) {
 	defer r.Cleanup()
-	// Run the agent in a goroutine
-	go agt.Start(ctx)
+
+	// Start the agent. This is non-blocking, and it spins up the main loop in a goroutine.
+	agt.Start(ctx)
 	simulateEvidence(agt)
 	simulateMetrics()
-	// Signal agent to shut down
+
 	shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), shutDownTimeout)
 	defer cancelShutdown()
 	agt.Stop(shutdownCtx)
+}
+
+// RunSimulation runs the simulation every 5 minutes until signaled to cancel.
+func (r *Runner) RunSimulation(ctx context.Context, agt *agent.Agent) {
+	agt.Start(ctx)
+
+	ticker := time.NewTicker(5 * time.Minute)
+	defer ticker.Stop()
+	defer r.Cleanup()
+
+	simulateEvidence(agt)
+	simulateMetrics()
+
+	for {
+		select {
+		case <-ticker.C:
+			simulateEvidence(agt)
+			simulateMetrics()
+		case <-ctx.Done():
+			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), shutDownTimeout)
+			defer cancelShutdown()
+			agt.Stop(shutdownCtx)
+			return
+		}
+	}
 }
 
 func simulateMetrics() {

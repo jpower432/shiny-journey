@@ -34,13 +34,21 @@ func main() {
 
 func run(ctx context.Context) error {
 	var archivistaURL, otelEndpoint string
+	var continuous bool
 	flag.StringVar(&archivistaURL, "archvista-url", "http://localhost:8082", "URL for Archivista")
 	flag.StringVar(&otelEndpoint, "otel-endpoint", "", "Endpoint for the OpenTelemetry Collector")
+	flag.BoolVar(&continuous, "continuous", false, "Run continuously until canceled. Default is to run once and stop the agent.")
 	flag.Parse()
 
 	runner := simulation.NewRunner()
-
 	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()), agent.WithOTELCollectorEndpoint(otelEndpoint))
+
+	if !continuous {
+		runner.RunSimulationInstance(ctx, agt)
+		return nil
+	}
+
+	// Run the continuous loop
 	runner.RunSimulation(ctx, agt)
 
 	return nil
