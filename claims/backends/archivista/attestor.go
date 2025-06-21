@@ -1,4 +1,4 @@
-package outputs
+package archivista
 
 import (
 	"encoding/json"

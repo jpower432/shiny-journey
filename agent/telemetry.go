@@ -2,13 +2,18 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/metric"
+	olog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
@@ -27,8 +32,18 @@ var (
 	serviceName     = semconv.ServiceNameKey.String("agent")
 )
 
-// metricsSetup completes setup of the Otel SDK with a metrics providers.
-func metricsSetup(ctx context.Context, conn *grpc.ClientConn) (shutdown func(context.Context) error, err error) {
+// otelSDKSetup completes setup of the Otel SDK with providers.
+func otelSDKSetup(ctx context.Context, conn *grpc.ClientConn) (func(context.Context) error, error) {
+	var shutdownFuncs []func(context.Context) error
+	shutDown := func(ctx context.Context) error {
+		var err error
+		for _, fn := range shutdownFuncs {
+			err = errors.Join(err, fn(ctx))
+		}
+		shutdownFuncs = nil
+		return err
+	}
+
 	metricExporter, err := otlpmetricgrpc.New(ctx, otlpmetricgrpc.WithGRPCConn(conn))
 	if err != nil {
 		return nil, err
@@ -44,7 +59,23 @@ func metricsSetup(ctx context.Context, conn *grpc.ClientConn) (shutdown func(con
 		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExporter, sdkmetric.WithInterval(5*time.Second))), sdkmetric.WithResource(res),
 	)
 	otel.SetMeterProvider(meterProvider)
-	return meterProvider.Shutdown, nil
+
+	// For testing
+	exp, err := otlploggrpc.New(ctx, otlploggrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, err
+	}
+
+	logProcessor := olog.NewSimpleProcessor(exp)
+	logProvider := olog.NewLoggerProvider(olog.WithProcessor(logProcessor), olog.WithResource(res))
+
+	// Register the provider as the global logger provider.
+	global.SetLoggerProvider(logProvider)
+
+	shutdownFuncs = append(shutdownFuncs, logProvider.Shutdown)
+	shutdownFuncs = append(shutdownFuncs, meterProvider.Shutdown)
+
+	return shutDown, nil
 }
 
 func metricsConfigure(store *claims.Store) {

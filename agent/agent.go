@@ -15,9 +15,8 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/jpower432/shiny-journey/claims"
-	"github.com/jpower432/shiny-journey/claims/backends/archivista"
+	"github.com/jpower432/shiny-journey/claims/backends/auditlog"
 	"github.com/jpower432/shiny-journey/claims/evidence"
-	"github.com/jpower432/shiny-journey/claims/outputs"
 )
 
 var (
@@ -64,7 +63,7 @@ func (a *Agent) Start(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("failed to create gRPC connection to collector: %v", err)
 		}
-		otelShutdown, err = metricsSetup(ctx, conn)
+		otelShutdown, err = otelSDKSetup(ctx, conn)
 		if err != nil {
 			log.Fatalf("error with instrumentation: %v", err)
 		}
@@ -150,16 +149,15 @@ func (a *Agent) processEvidence(ctx context.Context, rawEv evidence.RawEvidence)
 	if err != nil {
 		return err
 	}
-	return a.attest(ctx, rawEv, rawEvidenceRef)
+	return a.logEvidence(ctx, rawEv, rawEvidenceRef)
 }
 
-func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence, rawEnvRef string) error {
-	attestor := outputs.NewAttestor(rawEv, rawEnvRef, plan)
-	err := archivista.Export(ctx, attestor, a.options.signer, a.options.attestationEndpoint)
+func (a *Agent) logEvidence(ctx context.Context, rawEv evidence.RawEvidence, rawEnvRef string) error {
+	claim, err := auditlog.LogClaim(ctx, rawEv, rawEnvRef, plan)
 	if err != nil {
-		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
+		return err
 	}
-
-	a.store.Add(*attestor.Claim)
+	log.Printf("Logged evidence with claim id %s\n", claim.ClaimID)
+	a.store.Add(*claim)
 	return nil
 }

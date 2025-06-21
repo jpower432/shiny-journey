@@ -15,7 +15,7 @@ deploy-dac:
 	percli apply -f built/hack/dac/main_output.json
 
 run:
-	./bin/comply-agent --otel-endpoint localhost:4317
+	./bin/comply-agent
 
 run-loop:
-	./bin/comply-agent --otel-endpoint localhost:4317 --continuous
+	./bin/comply-agent --continuous
