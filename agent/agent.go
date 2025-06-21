@@ -64,7 +64,7 @@ func (a *Agent) Start(ctx context.Context) {
 		if err != nil {
 			log.Fatalf("failed to create gRPC connection to collector: %v", err)
 		}
-		otelShutdown, err = metricsSetup(ctx, conn)
+		otelShutdown, err = otelSDKSetup(ctx, conn)
 		if err != nil {
 			log.Fatalf("error with instrumentation: %v", err)
 		}
@@ -160,6 +160,7 @@ func (a *Agent) attest(ctx context.Context, rawEv evidence.RawEvidence, rawEnvRe
 		return fmt.Errorf("error exporting claim %s: %v", attestor.Claim.ClaimID, err)
 	}
 
-	a.store.Add(*attestor.Claim)
-	return nil
+	claim := *attestor.Claim
+	a.store.Add(claim)
+	return outputs.LogClaim(ctx, claim)
 }

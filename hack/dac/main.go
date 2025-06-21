@@ -113,6 +113,9 @@ func main() {
 	}
 
 	// Create the dashboard definition
+	// Shows a component under scrutiny achieves security controls in a security baseline.
+	// Uses codified methods of validation to confirm that the implemented controls are functioning correctly
+	// and achieving their intended operational outcomes.
 	builder, buildErr := dashboard.New("ContinuousMonitoring",
 		dashboard.ProjectName("ShinyJourney"),
 		dashboard.RefreshInterval(1*time.Minute),

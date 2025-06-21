@@ -5,6 +5,7 @@ receivers:
         endpoint: "0.0.0.0:4317"
 
 processors:
+  batch:
 
 extensions:
   health_check: {}
@@ -15,11 +16,26 @@ exporters:
     tls:
       insecure: true
   debug:
-    verbosity: basic
+    verbosity: detailed
+  otlphttp/logs:
+    endpoint: "http://loki:3100/otlp"
+    tls:
+      insecure: true
+
+connectors:
+  signaltometrics:
+    logs:
+      - description: Count of log records
+        name: logrecord_count
+        sum:
+          value: "1"
 
 service:
   extensions: [health_check]
   pipelines:
-    metrics:
+    logs:
       receivers: [ otlp ]
+      exporters: [ otlphttp/logs, signaltometrics ]
+    metrics:
+      receivers: [ otlp, signaltometrics ]
       exporters: [ otlphttp/prometheus, debug ]
