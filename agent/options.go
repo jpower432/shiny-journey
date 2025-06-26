@@ -13,6 +13,7 @@ type agentOptions struct {
 
 func (o *agentOptions) defaults() {
 	o.attestationEndpoint = "http://localhost:8082"
+	o.otelEndpoint = "localhost:4317"
 }
 
 type Option func(ao *agentOptions)
