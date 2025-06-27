@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/revanite-io/sci/layer4"
 
-	"github.com/jpower432/shiny-journey/evidence"
+	"github.com/jpower432/shiny-journey/claims/evidence"
 )
 
 // ConformanceClaim represents a higher-level, mapped conformance assertion.

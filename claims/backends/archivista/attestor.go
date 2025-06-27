@@ -1,19 +1,16 @@
-package claims
+package archivista
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
-	gowitness "github.com/in-toto/go-witness"
-	"github.com/in-toto/go-witness/archivista"
 	"github.com/in-toto/go-witness/attestation"
 	"github.com/in-toto/go-witness/cryptoutil"
 	"github.com/invopop/jsonschema"
 	"github.com/revanite-io/sci/layer4"
 
-	"github.com/jpower432/shiny-journey/evidence"
+	"github.com/jpower432/shiny-journey/claims"
+	"github.com/jpower432/shiny-journey/claims/evidence"
 )
 
 const Name = "conformance-claim"
@@ -21,7 +18,7 @@ const Type = "https://example.com/conformance-claim/v1"
 const RunType = attestation.VerifyRunType
 
 type AssessmentAttestor struct {
-	Claim       *ConformanceClaim
+	Claim       *claims.ConformanceClaim
 	rawEvidence evidence.RawEvidence
 	plan        layer4.Layer4
 	evidenceRef string
@@ -52,7 +49,7 @@ func (a *AssessmentAttestor) RunType() attestation.RunType {
 }
 
 func (a *AssessmentAttestor) Attest(ctx *attestation.AttestationContext) error {
-	claim := NewFromEvidence(a.rawEvidence, a.evidenceRef, a.plan)
+	claim := claims.NewFromEvidence(a.rawEvidence, a.evidenceRef, a.plan)
 	a.Claim = claim
 	return nil
 }
@@ -76,37 +73,5 @@ func (a *AssessmentAttestor) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	return nil
-}
-
-// Export exports attestations to remote storage
-func Export(ctx context.Context, attestor attestation.Attestor, signer cryptoutil.Signer, archivistaURL string) error {
-	opts := []gowitness.RunOption{
-		gowitness.RunWithAttestors([]attestation.Attestor{attestor}),
-	}
-
-	if signer == nil {
-		opts = append(opts, gowitness.RunWithInsecure(true))
-	} else {
-		opts = append(opts, gowitness.RunWithSigners(signer))
-	}
-
-	runResults, err := gowitness.RunWithExports("comply", opts...)
-	if err != nil {
-		return err
-	}
-
-	client := archivista.New(archivistaURL)
-	for _, result := range runResults {
-		atts := result.Collection.Attestations
-		if len(atts) == 0 {
-			continue
-		}
-		gitoid, err := client.Store(ctx, result.SignedEnvelope)
-		if err != nil {
-			return err
-		}
-		log.Printf("gitoid: %s", gitoid)
-	}
 	return nil
 }

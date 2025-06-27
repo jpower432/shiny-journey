@@ -7,16 +7,11 @@ package main
 
 import (
 	"context"
-	"crypto"
-	"crypto/rand"
-	"crypto/rsa"
 	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/in-toto/go-witness/cryptoutil"
 
 	"github.com/jpower432/shiny-journey/agent"
 	"github.com/jpower432/shiny-journey/cmd/comply-agent/simulation"
@@ -33,25 +28,22 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	var archivistaURL, otelEndpoint string
-	flag.StringVar(&archivistaURL, "archvista-url", "http://localhost:8082", "URL for Archivista")
-	flag.StringVar(&otelEndpoint, "otel-endpoint", "", "Endpoint for the OpenTelemetry Collector")
+	var otelEndpoint string
+	var continuous bool
+	flag.StringVar(&otelEndpoint, "otel-endpoint", "localhost:4317", "Endpoint for the OpenTelemetry Collector")
+	flag.BoolVar(&continuous, "continuous", false, "Run continuously until canceled. Default is to run once and stop the agent.")
 	flag.Parse()
 
 	runner := simulation.NewRunner()
+	agt := agent.New(agent.WithOTELCollectorEndpoint(otelEndpoint))
 
-	agt := agent.New(agent.WithExporterURL(archivistaURL), agent.WithSigner(createTestRSAKey()), agent.WithOTELCollectorEndpoint(otelEndpoint))
+	if !continuous {
+		runner.RunSimulationInstance(ctx, agt)
+		return nil
+	}
+
+	// Run the continuous loop
 	runner.RunSimulation(ctx, agt)
 
 	return nil
-}
-
-// Create a random key for testing/prototyping to replace with a real signer.
-func createTestRSAKey() cryptoutil.Signer {
-	privKey, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		panic(err)
-	}
-	signer := cryptoutil.NewRSASigner(privKey, crypto.SHA256)
-	return signer
 }

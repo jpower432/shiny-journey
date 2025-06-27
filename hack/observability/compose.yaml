@@ -12,6 +12,12 @@ services:
     ports:
       - "9090:9090"
 
+  loki:
+    image: "docker.io/grafana/loki:3.5.1"
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+
   collector:
     image: "docker.io/otel/opentelemetry-collector-contrib:0.127.0"
     restart: unless-stopped
@@ -22,6 +28,7 @@ services:
       - "4317:4317"
     depends_on:
       - prometheus
+      - loki
 
   perses:
     image: "docker.io/persesdev/perses:v0.51.0-beta.1"
