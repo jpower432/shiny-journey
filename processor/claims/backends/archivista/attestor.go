@@ -9,8 +9,8 @@ import (
 	"github.com/invopop/jsonschema"
 	"github.com/revanite-io/sci/layer4"
 
-	"github.com/jpower432/shiny-journey/claims"
-	"github.com/jpower432/shiny-journey/claims/evidence"
+	"github.com/jpower432/shiny-journey/processor/claims"
+	"github.com/jpower432/shiny-journey/processor/claims/evidence"
 )
 
 const Name = "conformance-claim"

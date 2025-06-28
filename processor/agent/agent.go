@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/jpower432/shiny-journey/claims"
-	"github.com/jpower432/shiny-journey/claims/backends/auditlog"
-	"github.com/jpower432/shiny-journey/claims/evidence"
+	"github.com/jpower432/shiny-journey/processor/claims"
+	"github.com/jpower432/shiny-journey/processor/claims/backends/auditlog"
+	"github.com/jpower432/shiny-journey/processor/claims/evidence"
 )
 
 var (

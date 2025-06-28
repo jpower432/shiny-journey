@@ -1,0 +1,99 @@
+name: Policy Generator
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+
+jobs:
+  install-c2p:
+    runs-on: 'ubuntu-latest'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: c977fd75c4ef87bef5a25ccb519eb51aab698639
+          repository: "jpower432/compliance-to-policy-go"
+          token: '${{ secrets.GITHUB_TOKEN }}'
+          path: c2p
+
+      - name: Set up Go
+        uses: actions/setup-go@3041bf56c941b39c61721a86cd11f3bb1338122a # v5.2.0
+        with:
+          go-version: '1.24'
+          cache: false
+          check-latest: true
+
+      - name: Build
+        working-directory: c2p
+        run: |
+          export GOOS=$(go env GOOS)
+          export GOARCH=$(go env GOARCH)
+          make build
+          make build-plugins
+
+      - name: Add to path
+        working-directory: c2p
+        run: |
+          cp ./bin/c2pcli__SNAPSHOT_linux_amd64  $(go env GOPATH)/bin/c2pcli
+          cp ./bin/kyverno-plugin  $(go env GOPATH)/bin/kyverno-plugin
+          echo $(go env GOPATH)/bin >> $GITHUB_PATH
+
+      - name: Generate manifest
+        working-directory: c2p
+        run: |
+          checksum=$(sha256sum "$(go env GOPATH)/bin/kyverno-plugin" | cut -d ' ' -f 1 )
+          cat >  "$(go env GOPATH)/bin/c2p-kyverno-manifest.json" << EOF
+          {
+            "metadata": {
+              "id": "kyverno",
+              "description": "Kyverno PVP Plugin",
+              "version": "0.0.1",
+              "types": [
+                "pvp"
+              ]
+            },
+            "executablePath": "kyverno-plugin",
+            "sha256": "$checksum",
+            "configuration": [
+              {
+                "name": "policy-dir",
+                "description": "A directory where kyverno policies are located.",
+                "required": true
+              },
+              {
+                "name": "policy-results-dir",
+                "description": "A directory where policy results are located",
+                "required": true
+              },
+              {
+                "name": "temp-dir",
+                "description": "A temporary directory for policies",
+                "required": true
+              },
+              {
+                "name": "output-dir",
+                "description": "The output directory for policies",
+                "required": false,
+                "default": "."
+              }
+            ]
+          }
+          EOF
+
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          path: my-tools
+
+      - name: Generate policy
+        working-directory: my-tools
+        run: |
+          mkdir /tmp/kyverno-policy
+          c2pcli eval compliance2policy gemara -c docs/c2p-config.yaml --policy docs/policy.yaml --eval-dir ./docs/evals -p $(go env GOPATH)/bin
+
+      - name: Deploy
+        run: |
+          ls /tmp/kyverno-policy
+          echo "Deploying policies"
+
