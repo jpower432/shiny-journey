@@ -1,0 +1,11 @@
+catalogid: TEST-CAT
+starttime: 0001-01-01T00:00:00Z
+endtime: 0001-01-01T00:00:00Z
+corruptedstate: false
+controlevaluations:
+  - controlid: CAT.T01
+    assessments:
+      - requirementid: CAT.T01.TR01
+        methods:
+          - name: allowed-base-images
+            description: "Allow only approved base images"

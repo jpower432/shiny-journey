@@ -1,8 +1,3 @@
-/*
- Copyright 2024 The OSCAL Compass Authors
- SPDX-License-Identifier: Apache-2.0
-*/
-
 package main
 
 import (
@@ -13,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jpower432/shiny-journey/agent"
 	"github.com/jpower432/shiny-journey/cmd/comply-agent/simulation"
+	"github.com/jpower432/shiny-journey/processor/agent"
 )
 
 func main() {
