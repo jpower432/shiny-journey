@@ -1,6 +1,6 @@
 # shiny-journey
 
-A prototype runtime agent for evidence collection and evaluation to detect compliance drift at runtime.
+A collection of automation that simulates a framework for generating and collecting compliance evidence at runtime.
 
 ## Build
 
@@ -8,8 +8,16 @@ A prototype runtime agent for evidence collection and evaluation to detect compl
 go build -o ./bin/ ./cmd/... 
 ```
 
-## Run Demo
+## Generating Policies
 
+[Workflow File](./.github/workflows/ci.yml)
+
+- The GitHub Action install C2PCLI at runtime
+- The policies are generated with C2P
+- The remaining job steps simulate deployment
+- The "comply-agent" simulates observed policy decisions and evidence collection at runtime and processing
+
+## Runtime Simulation
 ```bash
 ./bin/comply-agent
 ```

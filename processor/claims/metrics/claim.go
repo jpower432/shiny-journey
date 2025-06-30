@@ -7,7 +7,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 
-	"github.com/jpower432/shiny-journey/claims"
+	"github.com/jpower432/shiny-journey/processor/claims"
 )
 
 // ComplianceObserver handles observing and pushing compliance assessment metrics.
