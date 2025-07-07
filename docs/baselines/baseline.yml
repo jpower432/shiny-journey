@@ -1,0 +1,29 @@
+metadata:
+  id: TEST-CAT
+  title: Test Catalog
+  version: 0.1.0
+  description: |
+    My test L2 catalog
+  applicability-categories:
+    - id: tlp_clear
+      title: TLP:Clear
+      description: |
+        Information may be shared without restriction.
+control-families:
+  - title: Example Family
+    description: |
+      An example control family
+    controls:
+      - id: CAT.T01
+        title: Supply Chain Example
+        objective: |
+           Building images which specify a base as their origin is a good start
+           to improving supply chain security, but over time organizations
+           may want to build an allow list of specific base images which
+           are allowed to be used when constructing containers.
+        assessment-requirements:
+          - id: CAT.T01.TR01
+            text: |
+              When a workload is deployed. ensure the base image is in the cluster-wide allow list.
+            applicability:
+              - tlp-clear

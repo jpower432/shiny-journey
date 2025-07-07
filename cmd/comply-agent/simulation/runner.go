@@ -9,8 +9,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/in-toto/go-witness/cryptoutil"
 
-	"github.com/jpower432/shiny-journey/agent"
-	"github.com/jpower432/shiny-journey/claims/evidence"
+	"github.com/jpower432/shiny-journey/processor/agent"
+	"github.com/jpower432/shiny-journey/processor/claims/evidence"
 )
 
 const shutDownTimeout = 7 * time.Second

@@ -1,0 +1,8 @@
+catalog_id: TEST-CAT
+corrupted_state: false
+evaluations:
+- control_id: CAT.T01
+  assessments:
+  - requirement_id: CAT.T01.TR01
+    methods:
+      - name: allowed-base-images

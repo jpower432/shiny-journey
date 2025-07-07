@@ -1,0 +1,5 @@
+catalogs:
+  - id: ./docs/baselines/baseline.yml
+    services:
+      - service: kubernetes
+        pluginID: kyverno

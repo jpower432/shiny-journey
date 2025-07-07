@@ -1,0 +1,6 @@
+plugins:
+  kyverno:
+    policy-dir: docs/policy-templates
+    policy-results-dir: ""
+    temp-dir: /tmp/
+    output-dir: /tmp/kyverno-policy

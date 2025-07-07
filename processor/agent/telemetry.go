@@ -19,9 +19,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 	"google.golang.org/grpc"
 
-	"github.com/jpower432/shiny-journey/claims"
-	"github.com/jpower432/shiny-journey/claims/evidence"
-	"github.com/jpower432/shiny-journey/claims/metrics"
+	"github.com/jpower432/shiny-journey/processor/claims"
+	"github.com/jpower432/shiny-journey/processor/claims/evidence"
+	"github.com/jpower432/shiny-journey/processor/claims/metrics"
 )
 
 const name = "go.opentelemetry.io/otel/example/agent"
