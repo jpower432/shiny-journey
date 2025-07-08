@@ -13,6 +13,8 @@ import (
 	"github.com/jpower432/shiny-journey/processor/claims/evidence"
 )
 
+// Assisted by: Gemini 2.5 Flash
+
 const shutDownTimeout = 7 * time.Second
 
 // Runner runs the Agent based on inputs
